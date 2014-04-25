@@ -63,3 +63,70 @@ def get_publication(request):
         'state': state,
         }
     return response_data
+
+
+@view_config(route_name='license-acceptance', request_method='GET')
+def get_accept_license(request):
+    """This produces an HTML form for accepting the license."""
+    publication_id = request.matchdict['id']
+    user_id = request.matchdict['uid']
+    setting = request.registry.settings
+
+    # TODO Verify the accepting user is the one making the request.
+
+    # For each pending document, accept the license.
+    with psycopg2.connect(settings[config.CONNECTION_STRING]) as db_conn:
+        with db_conn.cursor() as cursor:
+            cursor.execute("""
+SELECT
+  pd.uuid||'@'||concat_ws('.', pd.major_version, pd.minor_version) AS ident_hash,
+  license_acceptance
+FROM
+  pending_documents AS pd
+  NATURAL JOIN publications_license_acceptance AS pla
+WHERE pd.publication_id = %s AND user_id = %s""",
+                           (publication_id, user_id))
+            user_document_acceptances = cursor.fetchall()
+
+    return {'publication_id': publication_id,
+            'user_id': user_id,
+            'document_acceptances': user_document_acceptances,
+            }
+
+
+@view_config(route_name='license-acceptance', request_method='POST')
+def post_accept_license(request):
+    """Accept license acceptance requests."""
+    publication_id = request.matchdict['id']
+    uid = request.matchdict['uid']
+    settings = request.registry.settings
+
+    form_key = 'accept-all'
+    has_accepted_all = request.params.get(form_key, 0)
+    try:
+        has_accepted_all = bool(int(has_accepted_all))
+    except:
+        raise httpexceptions.HTTPBadRequest(
+            "Invalid value for {}.".format(form_key))
+
+    # TODO Verify the accepting user is the one making the request.
+    # They could be authenticated but not be the license acceptor.
+
+    # For each pending document, accept the license.
+    with psycopg2.connect(settings[config.CONNECTION_STRING]) as db_conn:
+        with db_conn.cursor() as cursor:
+               cursor.execute("""\
+UPDATE publications_license_acceptance AS pla
+SET acceptance = 't'
+FROM pending_documents AS pd
+WHERE
+  pd.publication_id = %s
+  AND
+  pla.user_id = %s
+  AND
+  pd.uuid = pla.uuid""",
+                              (publication_id, uid))
+    state = poke_publication_state(publication_id)
+    location = request.route_url('license-acceptance',
+                                 id=publication_id, uid=uid)
+    return httpexceptions.HTTPFound(location=location)

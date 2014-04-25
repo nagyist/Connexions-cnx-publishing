@@ -304,3 +304,45 @@ WHERE portal_type = 'Collection'""")
                 cursor.execute("SELECT name FROM modules ORDER BY name ASC")
                 names = [row[0] for row in cursor.fetchall()]
         self.assertEqual(names, ["Boom", "Figgy Pudd'n"])
+
+    def test_license_acceptance_to_publication(self):
+        """\
+        Accept the license to to-be-published documents.
+
+        1. Submit an EPUB containing loose documents.
+        2. Check the state of the publication.
+        3. As a user, accept the license.
+        4. Check the state of the license acceptance record.
+        """
+        api_key = self.api_keys_by_uid['no-trust']
+
+        # 1. --
+        epub_directory = os.path.join(TEST_DATA_DIR, 'loose-pages')
+        epub_filepath = self.pack_epub(epub_directory)
+        upload_files = [('epub', epub_filepath,)]
+        resp = self.app.post('/publications', upload_files=upload_files,
+                             headers=[('x-api-key', api_key,)])
+        self.assertEqual(resp.json['state'], 'Processing')
+        publication_id = resp.json['publication']
+
+        # 2. --
+        path = "/publications/{}".format(publication_id)
+        resp = self.app.get(path, headers=[('x-api-key', api_key,)])
+        self.assertEqual(resp.json['state'], 'Processing')
+
+        # 3. --
+        uid = 'charrose'
+        path = '/publications/{}/license-acceptances/{}' \
+            .format(publication_id, uid)
+        resp = self.app.post(path, params={'accept-all': '1'})
+
+        # 4. (manual)
+        with self.db_connect() as db_conn:
+            with db_conn.cursor() as cursor:
+                cursor.execute("""\
+SELECT acceptance
+FROM publications_license_acceptance
+WHERE user_id = %s
+ORDER BY uuid ASC""", (uid,))
+                accepted = cursor.fetchall()
+        self.assertEqual(accepted, [(True,), (True,)])
