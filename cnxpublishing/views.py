@@ -65,7 +65,8 @@ def get_publication(request):
     return response_data
 
 
-@view_config(route_name='license-acceptance', request_method='GET')
+@view_config(route_name='license-acceptance', request_method='GET',
+             renderer='templates/license-acceptances.jinja2')
 def get_accept_license(request):
     """This produces an HTML form for accepting the license."""
     publication_id = request.matchdict['id']

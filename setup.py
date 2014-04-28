@@ -10,6 +10,7 @@ install_requires = (
     'cnx-epub',
     'psycopg2',
     'pyramid',
+    'pyramid_jinja2',
     )
 tests_require = [
     'webtest',

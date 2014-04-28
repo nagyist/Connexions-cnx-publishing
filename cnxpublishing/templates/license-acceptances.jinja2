@@ -1,0 +1,16 @@
+<html>
+  <body>
+    Do you accept the license for the following documents?
+
+    <ul>
+      {% for document in document_acceptances %}
+      <li>{{document[0]}}</li>
+      {% endfor %}
+    </ul>
+
+    <form action="{{request.route_path('license-acceptance', id=publication_id, uid=user_id)}}">
+      <input type="hidden" name="accept-all" value="1" />
+      <input type="submit" value="Accept all" />
+    </form>
+  </body>
+<html>
