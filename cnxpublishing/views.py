@@ -81,7 +81,7 @@ def get_accept_license(request):
             cursor.execute("""
 SELECT
   pd.uuid||'@'||concat_ws('.', pd.major_version, pd.minor_version) AS ident_hash,
-  license_acceptance
+  license_accepted
 FROM
   pending_documents AS pd
   NATURAL JOIN publications_license_acceptance AS pla
@@ -130,4 +130,72 @@ WHERE
     state = poke_publication_state(publication_id)
     location = request.route_url('license-acceptance',
                                  id=publication_id, uid=uid)
+    return httpexceptions.HTTPFound(location=location)
+
+
+@view_config(route_name='role-acceptance', request_method='GET',
+             renderer='templates/role-acceptances.jinja2')
+def get_accept_role(request):
+    """This produces an HTML form for accepting the license."""
+    publication_id = request.matchdict['id']
+    setting = request.registry.settings
+
+    # TODO Verify the accepting user making the request
+    # is an already vetted role.
+
+    # For each pending document, accept the license.
+    with psycopg2.connect(settings[config.CONNECTION_STRING]) as db_conn:
+        with db_conn.cursor() as cursor:
+            cursor.execute("""
+SELECT row_to_json(combined_rows) FROM (
+SELECT
+  pd.uuid||'@'||concat_ws('.', pd.major_version, pd.minor_version) AS ident_hash,
+  pra.user_id AS user_id,
+  pra.acceptance AS accepted
+FROM
+  pending_documents AS pd
+  NATURAL JOIN publications_role_acceptance AS pra
+WHERE pd.publication_id = %s
+) AS combined_rows""",
+                           (publication_id, user_id))
+            role_acceptances = cursor.fetchall()
+
+    return {'publication_id': publication_id,
+            'role_acceptances': role_acceptances,
+            }
+
+
+@view_config(route_name='role-acceptance', request_method='POST')
+def post_accept_role(request):
+    """Accept role acceptance requests."""
+    publication_id = request.matchdict['id']
+    settings = request.registry.settings
+
+    form_key = 'accept-all'
+    has_accepted_all = request.params.get(form_key, 0)
+    try:
+        has_accepted_all = bool(int(has_accepted_all))
+    except:
+        raise httpexceptions.HTTPBadRequest(
+            "Invalid value for {}.".format(form_key))
+
+    # TODO Verify the accepting user making the request
+    # is an already vetted role..
+    # They could be authenticated but not be the vetted.
+
+    # For each document, accept the role.
+    with psycopg2.connect(settings[config.CONNECTION_STRING]) as db_conn:
+        with db_conn.cursor() as cursor:
+               cursor.execute("""\
+UPDATE publications_role_acceptance AS pra
+SET acceptance = 't'
+FROM pending_documents AS pd
+WHERE
+  pd.publication_id = %s
+  AND
+  pd.uuid = pra.uuid""",
+                              (publication_id,))
+    state = poke_publication_state(publication_id)
+    location = request.route_url('role-acceptance',
+                                 id=publication_id)
     return httpexceptions.HTTPFound(location=location)

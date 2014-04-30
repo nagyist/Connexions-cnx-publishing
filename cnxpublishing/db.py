@@ -109,6 +109,54 @@ update pending_documents set license_accepted = 't'
 where id = %s""", (document_id,))
 
 
+def upsert_roles(cursor, document_id, is_accepted=False):
+    """Update or insert records for pending document role acceptance."""
+    cursor.execute("""\
+SELECT "uuid", "metadata"
+FROM pending_documents
+WHERE id = %s""", (document_id,))
+    uuid, metadata = cursor.fetchone()
+    if metadata is None:
+        # Metadata wasn't set yet. Bailout early.
+        return
+
+    acceptors = set([u for u in metadata['publishers']])
+
+    # Acquire a list of existing acceptors.
+    cursor.execute("""\
+SELECT "user_id", "acceptance"
+FROM publications_role_acceptance
+WHERE uuid = %s""", (uuid,))
+    existing_acceptors_mapping = dict(cursor.fetchall())
+
+    # Who's not in the existing list?
+    existing_acceptors = set(existing_acceptors_mapping.keys())
+    new_acceptors = acceptors.difference(existing_acceptors)
+
+    # Insert the new role acceptors.
+    for acceptor in new_acceptors:
+        cursor.execute("""\
+INSERT INTO publications_role_acceptance
+  ("uuid", "user_id", "acceptance")
+VALUES (%s, %s, %s)""", (uuid, acceptor, is_accepted))
+
+    # Has everyone already accepted?
+    cursor.execute("""\
+SELECT user_id
+FROM publications_role_acceptance
+WHERE
+  uuid = %s
+  AND
+  (acceptance is NULL OR acceptance = FALSE)""", (uuid,))
+    defectors = set(cursor.fetchall())
+
+    if not defectors:
+        # Update the pending document license acceptance state.
+        cursor.execute("""\
+update pending_documents set roles_accepted = 't'
+where id = %s""", (document_id,))
+
+
 def _get_type_name(model):
     """Returns a type name of 'Document' or 'Binder' based model's type."""
     # XXX Shouldn't need to complicate this...
@@ -143,12 +191,14 @@ def add_pending_model(cursor, publication_id, model):
     if uri is not None:
         ident_hash = parse_archive_uri(uri)
         id, version = split_ident_hash(ident_hash, split_version=True)
+        is_new_document = True
     else:
         id = uuid.uuid4()
         if isinstance(model, cnxepub.Document):
             version = (1, None,)
         else:  # ...assume it's a binder.
             version = (1, 1,)
+        is_new_document = False
 
     type_ = _get_type_name(model)
     # Is the publishing party a trusted source?
@@ -216,6 +266,7 @@ RETURNING "id", "uuid", concat_ws('.', "major_version", "minor_version")
             WHERE "id" = %s"""
 
     cursor.execute(stmt, args)
+    upsert_roles(cursor, pending_id, is_new_document)
     upsert_pending_acceptors(cursor, pending_id)
     return pending_ident_hash
 

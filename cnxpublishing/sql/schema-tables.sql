@@ -18,6 +18,18 @@ CREATE TABLE publications_license_acceptance (
 );
 
 
+CREATE TABLE publications_role_acceptance (
+  "uuid" UUID,  -- Document uuid, no constraint
+  "user_id" TEXT,  -- User identifier, no constraint
+  -- Acceptance can be three states null, true or false.
+  -- The initial null value indicates action is required.
+  -- A value of true or false indicates that the user (at ``user_id``)
+  -- has been vetted for or against.
+  "acceptance" BOOLEAN DEFAULT NULL,
+  PRIMARY KEY ("uuid", "user_id")
+);
+
+
 CREATE TABLE publications (
   "id" SERIAL PRIMARY KEY,
   "publisher" TEXT NOT NULL,
