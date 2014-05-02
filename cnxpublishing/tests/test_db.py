@@ -83,7 +83,10 @@ VALUES (%s, %s, %s) RETURNING "id";""", args)
         publication_id = self.make_publication()
 
         # Create and add a document for the publication.
-        metadata = {'authors': [{'id': 'able', 'type': 'cnx-id'}]}
+        metadata = {
+            'authors': [{'id': 'able', 'type': 'cnx-id'}], 
+            'publishers': [{'id': 'jebus', 'type': 'cnx-id'}],
+            }
         document = self.make_document(metadata=metadata)
 
         # Here we are testing the function of add_pending_document.
@@ -125,6 +128,10 @@ WHERE
             'authors': [
                 {'id': 'smoo',
                  'name': 'smOO chIE',
+                 'type': 'cnx-id'}],
+            'publishers': [
+                {'id': 'jebus',
+                 'name': 'Jebus',
                  'type': 'cnx-id'}],
             'cnx-archive-uri': uri,
             }

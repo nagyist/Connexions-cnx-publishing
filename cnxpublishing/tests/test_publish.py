@@ -94,13 +94,16 @@ class PublishIntegrationTestCase(unittest.TestCase):
             'created': '1420-02-03 23:36:20.583149-05',
             'revised': '1420-02-03 23:36:20.583149-05',
             'license_url': 'http://creativecommons.org/licenses/by/3.0/',
-            'publishers': ['ream'],  # XXX We don't have a mapping.
+            # XXX We don't have a mapping.
+            'publishers': [{'id': 'ream'}],
             'authors': [{'id': 'rbates', 'type': 'cnx-id',
                          'name': 'Richard Bates'},],
-            'editors': ['jone', 'kahn'],
-            'illustrators': ['AbagaleBates'],  # XXX We don't have a mapping.
-            'translators': ['RhowandaOkofarBates', 'JamesOrwel'],
-            'copyright_holders': ['ream'],
+            'editors': [{'id': 'jone'}, {'id': 'kahn'}],
+            # XXX We don't have a mapping.
+            'illustrators': [{'id': 'AbagaleBates'}],
+            'translators': [{'id': 'RhowandaOkofarBates'},
+                            {'id': 'JamesOrwel'}],
+            'copyright_holders': [{'id': 'ream'}],
             'subjects': ['Business', 'Arts', 'Mathematics and Statistics'],
             'keywords': ['dingbat', 'bates', 'dilemma'],
             }
@@ -136,11 +139,13 @@ WHERE m.uuid||'@'||concat_ws('.',m.major_version,m.minor_version) = %s
         self.assertEqual(module[3], metadata['license_url'])
         self.assertEqual(module[4], 1)
         self.assertEqual(module[5], None)
-        self.assertEqual(module[6], [x['id'] for x in metadata['authors']])
+        self.assertEqual(module[6],
+                         [x['id'] for x in metadata['authors']])
         self.assertEqual(module[7], publisher)
         self.assertEqual(module[8], message)
         self.assertEqual(module[9], None)  # TODO maintainers list?
-        self.assertEqual(module[10], metadata['copyright_holders'])
+        self.assertEqual(module[10],
+                         [x['id'] for x in metadata['copyright_holders']])
         self.assertEqual(module[11], None)  # TODO parent authors?
         self.assertEqual(module[12], None)  # TODO analytics code?
         self.assertEqual(module[13], None)  # TODO buy link?
@@ -160,8 +165,10 @@ WHERE mor.module_ident = (SELECT module_ident from module)
                 roles = dict(cursor.fetchall())
         self.assertEqual(roles['authors'],
                          [x['id'] for x in metadata['authors']])
-        self.assertEqual(roles['licensors'], metadata['copyright_holders'])
-        self.assertEqual(roles['translators'], metadata['translators'])
+        self.assertEqual(roles['licensors'],
+                         [x['id'] for x in metadata['copyright_holders']])
+        self.assertEqual(roles['translators'],
+                         [x['id'] for x in metadata['translators']])
 
     def test_document_insertion_w_id_n_version_provided(self):
         id, version = '3a70f722-b7b0-4b41-83dd-2790cee98c39', '1'
@@ -174,13 +181,16 @@ WHERE mor.module_ident = (SELECT module_ident from module)
             'created': '1420-02-03 23:36:20.583149-05',
             'revised': '1420-02-03 23:36:20.583149-05',
             'license_url': 'http://creativecommons.org/licenses/by/3.0/',
-            'publishers': ['ream'],  # XXX We don't have a mapping.
+            # XXX We don't have a mapping.
+            'publishers': [{'id': 'ream'}],
             'authors': [{'id': 'rbates', 'type': 'cnx-id',
                          'name': 'Richard Bates'},],
-            'editors': ['jone', 'kahn'],
-            'illustrators': ['AbagaleBates'],  # XXX We don't have a mapping.
-            'translators': ['RhowandaOkofarBates', 'JamesOrwel'],
-            'copyright_holders': ['ream'],
+            'editors': [{'id': 'jone'}, {'id': 'kahn'}],
+            # XXX We don't have a mapping.
+            'illustrators': [{'id': 'AbagaleBates'}],
+            'translators': [{'id': 'RhowandaOkofarBates'},
+                            {'id': 'JamesOrwel'}],
+            'copyright_holders': [{'id': 'ream'}],
             'subjects': ['Business', 'Arts', 'Mathematics and Statistics'],
             'keywords': ['dingbat', 'bates', 'dilemma'],
             }

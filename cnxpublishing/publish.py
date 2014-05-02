@@ -143,7 +143,11 @@ def _insert_metadata(cursor, model, publisher, message):
     params['publisher'] = publisher
     params['publication_message'] = message
     params['_portal_type'] = _model_to_portaltype(model)
-    params['authors'] = [parse_user_uri(x['id']) for x in params['authors']]
+    # Transform person structs to id lists for database array entry.
+    for person_field in ('editors', 'illustrators', 'translators',
+                         'publishers', 'copyright_holders', 'authors',):
+        params[person_field] = [parse_user_uri(x['id'])
+                                for x in params.get(person_field, [])]
 
     # Assign the id and version if one is known.
     if model.ident_hash is not None:

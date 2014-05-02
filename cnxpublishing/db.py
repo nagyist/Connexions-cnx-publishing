@@ -109,7 +109,7 @@ update pending_documents set license_accepted = 't'
 where id = %s""", (document_id,))
 
 
-def upsert_roles(cursor, document_id, is_accepted=False):
+def upsert_roles(cursor, document_id, is_accepted=None):
     """Update or insert records for pending document role acceptance."""
     cursor.execute("""\
 SELECT "uuid", "metadata"
@@ -120,7 +120,12 @@ WHERE id = %s""", (document_id,))
         # Metadata wasn't set yet. Bailout early.
         return
 
-    acceptors = set([u for u in metadata['publishers']])
+    acceptors = set([])
+    for user in metadata['publishers']:
+        if user['type'] != 'cnx-id':
+            raise ValueError("Archive only accepts Connexions users.")
+        id = parse_user_uri(user['id'])
+        acceptors.add(id)
 
     # Acquire a list of existing acceptors.
     cursor.execute("""\

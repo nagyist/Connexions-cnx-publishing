@@ -373,18 +373,20 @@ ORDER BY uuid ASC""", (uid,))
         self.assertEqual(resp.json['state'], 'Processing')
 
         # 3. --
-        uid = 'Ream'
+        uid = 'ream'  # The authenticated user
         path = '/publications/{}/role-acceptances' \
-            .format(publication_id, uid)
+            .format(publication_id)
         resp = self.app.post(path, params={'accept-all': '1'})
 
         # 4. (manual)
         with self.db_connect() as db_conn:
             with db_conn.cursor() as cursor:
                 cursor.execute("""\
-SELECT acceptance
+SELECT user_id, array_agg(acceptance)
 FROM publications_role_acceptance
-WHERE user_id = %s
-ORDER BY uuid ASC""", (uid,))
+GROUP BY user_id
+ORDER BY user_id ASC""")
                 accepted = cursor.fetchall()
-        self.assertEqual(accepted, [(True,)])
+        # Check acceptance for both documents and both publishers.
+        expected = [('ream', [True, True],), ('rings', [True],)]
+        self.assertEqual(accepted, expected)
